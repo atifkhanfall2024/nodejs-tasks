@@ -1,0 +1,29 @@
+const express = require('express');
+const app = express();
+const port = 3000;
+
+// Sample book list with ISBNs
+const books = [
+    { id: 1, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "9780743273565" },
+    { id: 2, title: "To Kill a Mockingbird", author: "Harper Lee", isbn: "9780061120084" },
+    { id: 3, title: "1984", author: "George Orwell", isbn: "9780451524935" },
+    { id: 4, title: "The Catcher in the Rye", author: "J.D. Salinger", isbn: "9780316769488" },
+    { id: 5, title: "Moby Dick", author: "Herman Melville", isbn: "9781503280786" }
+];
+
+// Route to get a book by ISBN
+app.get('/books/isbn/:isbn', (req, res) => {
+    const isbn = req.params.isbn;
+    const book = books.find(b => b.isbn === isbn);
+
+    if (book) {
+        res.json({ success: true, data: book });
+    } else {
+        res.status(404).json({ success: false, message: "Book not found" });
+    }
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});

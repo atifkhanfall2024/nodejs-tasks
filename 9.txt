@@ -1,0 +1,80 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/bookstore', { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("Error: ", err));
+
+// Book Schema
+const BookSchema = new mongoose.Schema({
+    title: String,
+    author: String,
+    isbn: String,
+    reviews: [
+        {
+            user: String,
+            review: String,
+            rating: Number
+        }
+    ]
+});
+
+// Book Model
+const Book = mongoose.model('Book', BookSchema);
+
+// Middleware to verify token
+const authenticateToken = (req, res, next) => {
+    const token = req.header('Authorization');
+    if (!token) return res.status(401).json({ success: false, message: "Access Denied" });
+
+    try {
+        const verified = jwt.verify(token, "your_secret_key");
+        req.user = verified;
+        next();
+    } catch (error) {
+        res.status(400).json({ success: false, message: "Invalid Token" });
+    }
+};
+
+// Delete Book Review by User
+app.delete('/book/review/:isbn', authenticateToken, async (req, res) => {
+    try {
+        const { isbn } = req.params;
+
+        let book = await Book.findOne({ isbn });
+        if (!book) {
+            return res.status(404).json({ success: false, message: "Book not found" });
+        }
+
+        // Filter out the review of the authenticated user
+        const updatedReviews = book.reviews.filter(r => r.user !== req.user.email);
+
+        if (updatedReviews.length === book.reviews.length) {
+            return res.status(404).json({ success: false, message: "Review not found or already deleted" });
+        }
+
+        book.reviews = updatedReviews;
+        await book.save();
+
+        res.status(200).json({ success: true, message: "Review deleted successfully", book });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});

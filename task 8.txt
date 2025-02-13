@@ -1,0 +1,82 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/bookstore', { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("Error: ", err));
+
+// Book Schema
+const BookSchema = new mongoose.Schema({
+    title: String,
+    author: String,
+    isbn: String,
+    reviews: [
+        {
+            user: String,
+            review: String,
+            rating: Number
+        }
+    ]
+});
+
+// Book Model
+const Book = mongoose.model('Book', BookSchema);
+
+// Middleware to verify token
+const authenticateToken = (req, res, next) => {
+    const token = req.header('Authorization');
+    if (!token) return res.status(401).json({ success: false, message: "Access Denied" });
+
+    try {
+        const verified = jwt.verify(token, "your_secret_key");
+        req.user = verified;
+        next();
+    } catch (error) {
+        res.status(400).json({ success: false, message: "Invalid Token" });
+    }
+};
+
+// Add or Modify Book Review
+app.post('/book/review', authenticateToken, async (req, res) => {
+    try {
+        const { isbn, review, rating } = req.body;
+
+        let book = await Book.findOne({ isbn });
+        if (!book) {
+            return res.status(404).json({ success: false, message: "Book not found" });
+        }
+
+        // Check if user already reviewed the book
+        const existingReview = book.reviews.find(r => r.user === req.user.email);
+        if (existingReview) {
+            // Modify existing review
+            existingReview.review = review;
+            existingReview.rating = rating;
+        } else {
+            // Add new review
+            book.reviews.push({ user: req.user.email, review, rating });
+        }
+
+        await book.save();
+        res.status(200).json({ success: true, message: "Review added/updated successfully", book });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});

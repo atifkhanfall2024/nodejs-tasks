@@ -1,0 +1,52 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/bookstore', { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("Error: ", err));
+
+// Book Schema
+const BookSchema = new mongoose.Schema({
+    title: String,
+    author: String,
+    isbn: String
+});
+
+// Book Model
+const Book = mongoose.model('Book', BookSchema);
+
+// Get All Books - Using Async Callback
+const getAllBooks = async (callback) => {
+    try {
+        const books = await Book.find();
+        callback(null, books);
+    } catch (error) {
+        callback(error, null);
+    }
+};
+
+// Route to Get All Books
+app.get('/books', (req, res) => {
+    getAllBooks((err, books) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "Server error", error: err.message });
+        }
+        res.status(200).json({ success: true, books });
+    });
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});

@@ -1,0 +1,56 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/bookstore', { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("Error: ", err));
+
+// Book Schema
+const BookSchema = new mongoose.Schema({
+    title: String,
+    author: String,
+    isbn: String
+});
+
+// Book Model
+const Book = mongoose.model('Book', BookSchema);
+
+// Search Book by ISBN - Using Promises
+const getBookByISBN = (isbn) => {
+    return new Promise((resolve, reject) => {
+        Book.findOne({ isbn: isbn })
+            .then(book => {
+                if (!book) {
+                    reject(new Error("Book not found"));
+                } else {
+                    resolve(book);
+                }
+            })
+            .catch(error => reject(error));
+    });
+};
+
+// Route to Search Book by ISBN
+app.get('/books/isbn/:isbn', (req, res) => {
+    const { isbn } = req.params;
+
+    getBookByISBN(isbn)
+        .then(book => res.status(200).json({ success: true, book }))
+        .catch(err => res.status(404).json({ success: false, message: err.message }));
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});

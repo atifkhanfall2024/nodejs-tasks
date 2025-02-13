@@ -1,0 +1,43 @@
+const express = require('express');
+const app = express();
+const port = 3000;
+
+// Sample book list with reviews
+const books = [
+    { 
+        id: 1, 
+        title: "The Great Gatsby", 
+        author: "F. Scott Fitzgerald", 
+        isbn: "9780743273565", 
+        reviews: [
+            { user: "Alice", rating: 5, comment: "A timeless classic!" },
+            { user: "Bob", rating: 4, comment: "Loved the storytelling." }
+        ]
+    },
+    { 
+        id: 2, 
+        title: "To Kill a Mockingbird", 
+        author: "Harper Lee", 
+        isbn: "9780061120084", 
+        reviews: [
+            { user: "Charlie", rating: 5, comment: "An eye-opening book." }
+        ]
+    }
+];
+
+// Route to get book reviews by ISBN
+app.get('/books/review/:isbn', (req, res) => {
+    const isbn = req.params.isbn;
+    const book = books.find(b => b.isbn === isbn);
+
+    if (book) {
+        res.json({ success: true, reviews: book.reviews });
+    } else {
+        res.status(404).json({ success: false, message: "No book found with this ISBN" });
+    }
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});
